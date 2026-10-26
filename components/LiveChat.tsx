@@ -50,14 +50,17 @@ export const LiveChat: React.FC = () => {
         .from('messages')
         .select('*')
         .order('created_at', { ascending: true })
-        .limit(60);
+        .limit(80);
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         setMessages((prev) => {
-          // Merge preserving optimistic messages
-          const existingIds = new Set(data.map((m) => m.id));
-          const optimistic = prev.filter((p) => !existingIds.has(p.id));
-          return [...(data as HubMessage[]), ...optimistic];
+          if (data.length === 0) return prev;
+          const map = new Map<string, HubMessage>();
+          prev.forEach((m) => map.set(m.id, m));
+          (data as HubMessage[]).forEach((m) => map.set(m.id, m));
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
         });
       }
     } catch (err) {
@@ -66,7 +69,7 @@ export const LiveChat: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // 1. Initialize username and color
+    // 1. Initialize user identification
     try {
       const savedName = localStorage.getItem('aetherhub_username');
       if (savedName) {
@@ -95,10 +98,6 @@ export const LiveChat: React.FC = () => {
     // 2. Fetch initial messages
     fetchLatestMessages();
 
-    if (!isSupabaseConfigured) {
-      return;
-    }
-
     // 3. Supabase Realtime Channel: Listen to both Broadcast & Postgres Changes
     const channel = supabase.channel('hub-chat-sync', {
       config: { broadcast: { self: false } },
@@ -106,7 +105,7 @@ export const LiveChat: React.FC = () => {
 
     try {
       channel
-        // A: Listen to broadcast messages from other clients (Instant 0ms latency)
+        // Broadcast listener (Instant 0ms latency between tabs)
         .on('broadcast', { event: 'new_message' }, (payload) => {
           const incoming = payload.payload as HubMessage;
           if (!incoming || !incoming.id) return;
@@ -116,7 +115,7 @@ export const LiveChat: React.FC = () => {
             return [...prev, incoming];
           });
         })
-        // B: Listen to PostgreSQL table changes
+        // Postgres change listener
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'messages' },
@@ -135,8 +134,8 @@ export const LiveChat: React.FC = () => {
       console.warn('Realtime chat subscription error:', cErr);
     }
 
-    // 4. Polling Fallback: Refresh messages every 3 seconds
-    const interval = setInterval(fetchLatestMessages, 3000);
+    // 4. Polling Fallback: Refresh messages every 2.5 seconds
+    const interval = setInterval(fetchLatestMessages, 2500);
 
     return () => {
       clearInterval(interval);
@@ -181,38 +180,34 @@ export const LiveChat: React.FC = () => {
       created_at: new Date().toISOString(),
     };
 
-    // 1. Optimistic UI update for sender
+    // 1. Optimistic UI update
     setMessages((prev) => [...prev, newMsg]);
     playChime('upload');
 
-    // 2. Broadcast over WebSocket to all other users
-    if (isSupabaseConfigured) {
-      try {
-        const channel = supabase.channel('hub-chat-sync');
-        channel.send({
-          type: 'broadcast',
-          event: 'new_message',
-          payload: newMsg,
-        });
-      } catch (bErr) {
-        console.warn('Broadcast chat error:', bErr);
-      }
+    // 2. Broadcast immediately over WebSocket to other users
+    try {
+      const channel = supabase.channel('hub-chat-sync');
+      channel.send({
+        type: 'broadcast',
+        event: 'new_message',
+        payload: newMsg,
+      });
+    } catch (bErr) {
+      console.warn('Broadcast chat error:', bErr);
     }
 
     // 3. Persist to Supabase Database
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from('messages').insert([
-          {
-            id: tempId,
-            sender_name: userName,
-            content: messageText,
-            avatar_color: userColor,
-          },
-        ]);
-      } catch (err) {
-        console.warn('Message send exception:', err);
-      }
+    try {
+      await supabase.from('messages').insert([
+        {
+          id: tempId,
+          sender_name: userName,
+          content: messageText,
+          avatar_color: userColor,
+        },
+      ]);
+    } catch (err) {
+      console.warn('Message send exception:', err);
     }
 
     setIsSending(false);

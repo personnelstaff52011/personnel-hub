@@ -1,7 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Fallback to project credentials if environment variables are not set on Vercel
+const DEFAULT_SUPABASE_URL = 'https://qijzxlewpepsgmfmhpcx.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpanp4bGV3cGVwc2dtZm1ocGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5OTYxMTgsImV4cCI6MjEwODU3MjExOH0.oVFYdDuFJCTBhed-PC-JYDH4iYaBjrLnE3a18QvpYD8';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured: boolean = Boolean(
   supabaseUrl &&
@@ -10,15 +15,14 @@ export const isSupabaseConfigured: boolean = Boolean(
   !supabaseUrl.includes('placeholder')
 );
 
-// Fallback mock safe client if credentials are not yet configured
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    })
-  : createClient(
-      'https://placeholder-domain-999.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder'
-    );
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+});
