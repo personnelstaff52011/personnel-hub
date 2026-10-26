@@ -36,11 +36,15 @@ export const LiveChat: React.FC = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('นักบินอวกาศ');
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Reference directly to the scrollable chat container only
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll ONLY the inner chat messages box, NEVER the entire browser window
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   };
 
   const fetchLatestMessages = useCallback(async () => {
@@ -105,7 +109,6 @@ export const LiveChat: React.FC = () => {
 
     try {
       channel
-        // Broadcast listener (Instant 0ms latency between tabs)
         .on('broadcast', { event: 'new_message' }, (payload) => {
           const incoming = payload.payload as HubMessage;
           if (!incoming || !incoming.id) return;
@@ -115,7 +118,6 @@ export const LiveChat: React.FC = () => {
             return [...prev, incoming];
           });
         })
-        // Postgres change listener
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'messages' },
@@ -283,8 +285,11 @@ export const LiveChat: React.FC = () => {
         </div>
       </div>
 
-      {/* Messages Stream Box */}
-      <div className="flex-1 overflow-y-auto pr-1 space-y-3.5 scroll-smooth">
+      {/* Messages Stream Box: chatContainerRef controls inner scroll only */}
+      <div
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto pr-1 space-y-3.5"
+      >
         {messages.map((msg) => {
           const isMe = msg.sender_name === userName;
 
@@ -321,7 +326,6 @@ export const LiveChat: React.FC = () => {
             </motion.div>
           );
         })}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Quick Emoji Reactions */}

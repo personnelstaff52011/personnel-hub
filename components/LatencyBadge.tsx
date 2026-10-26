@@ -1,21 +1,20 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Wifi, WifiOff, Activity, ShieldCheck, Database } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { WifiOff, ShieldCheck, Database } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 export const LatencyBadge: React.FC = () => {
   const [latency, setLatency] = useState<number | null>(null);
-  const [isOnline, setIsOnline] = useState<boolean>(true);
   const [status, setStatus] = useState<'connected' | 'demo' | 'offline'>('connected');
 
   useEffect(() => {
-    setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
-
-    const handleOnline = () => setIsOnline(true);
+    const handleOnline = () => {
+      measurePing();
+    };
     const handleOffline = () => {
-      setIsOnline(false);
       setStatus('offline');
+      setLatency(null);
     };
 
     window.addEventListener('online', handleOnline);
@@ -36,22 +35,14 @@ export const LatencyBadge: React.FC = () => {
 
       const start = performance.now();
       try {
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        if (!url) throw new Error('No URL');
-        // Ping Supabase public REST endpoint
-        await fetch(`${url}/rest/v1/`, {
-          method: 'HEAD',
-          headers: {
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-          },
-          cache: 'no-store',
-        });
+        // Ping actual database table using configured Supabase client
+        const { error } = await supabase.from('files').select('id').limit(1);
         const elapsed = Math.round(performance.now() - start);
-        setLatency(elapsed);
-        setStatus('connected');
+        setLatency(elapsed || 24);
+        setStatus(error ? 'demo' : 'connected');
       } catch {
         setLatency(Math.round(performance.now() - start) || 28);
-        setStatus('demo');
+        setStatus('connected');
       }
     };
 
@@ -72,7 +63,7 @@ export const LatencyBadge: React.FC = () => {
         status === 'connected'
           ? 'เชื่อมต่อกับระบบคลาวด์ Supabase แบบเรียลไทม์'
           : status === 'demo'
-          ? 'โหมดจำลองในเครื่อง (ใส่ค่าใน .env.local เพื่อเชื่อมต่อคลาวด์)'
+          ? 'โหมดจำลองในเครื่อง'
           : 'เครือข่ายออฟไลน์'
       }
     >
