@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
-  MessageSquare,
   Send,
-  User,
   Sparkles,
   Radio,
   Smile,
-  CheckCircle2,
   Edit2,
   Check,
 } from 'lucide-react';
@@ -21,17 +18,10 @@ import { useToast } from './ToastContext';
 const DEFAULT_MESSAGES: HubMessage[] = [
   {
     id: 'msg-1',
-    sender_name: 'ศูนย์ประสานงาน กองพลทหารช่าง',
-    content: 'ยินดีต้อนรับสู่ระบบสื่อสาร ครอบครัว กำลังพล กองพลทหารช่าง 🛡️ พร้อมให้บริการกำลังพลทุกนาย',
-    avatar_color: '#F59E0B',
+    sender_name: 'ศูนย์ควบคุม Aether',
+    content: 'ยินดีต้อนรับสู่ห้องสื่อสารควอนตัมประจำสถานี AetherHub 🛰️ สัญญาณไร้แรงโน้มถ่วงพร้อมใช้งาน',
+    avatar_color: '#06B6D4',
     created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: 'msg-2',
-    sender_name: 'นักสำรวจ-Alpha',
-    content: 'อัปโหลดพิมพ์เขียวขึ้นแกนดึงดูดเรียบร้อย สแกนรับข้อมูลผ่าน QR Code ได้เลยครับ 🌌',
-    avatar_color: '#8B5CF6',
-    created_at: new Date(Date.now() - 1800000).toISOString(),
   },
 ];
 
@@ -53,8 +43,30 @@ export const LiveChat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Initialize username and load messages
+  const fetchLatestMessages = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .limit(60);
+
+      if (!error && data && data.length > 0) {
+        setMessages((prev) => {
+          // Merge preserving optimistic messages
+          const existingIds = new Set(data.map((m) => m.id));
+          const optimistic = prev.filter((p) => !existingIds.has(p.id));
+          return [...(data as HubMessage[]), ...optimistic];
+        });
+      }
+    } catch (err) {
+      console.warn('Sync messages polling error:', err);
+    }
+  }, []);
+
   useEffect(() => {
+    // 1. Initialize username and color
     try {
       const savedName = localStorage.getItem('aetherhub_username');
       if (savedName) {
@@ -80,71 +92,51 @@ export const LiveChat: React.FC = () => {
       // Ignore
     }
 
-    // Load initial messages from Supabase
-    async function loadMessages() {
-      if (isSupabaseConfigured) {
-        try {
-          const { data, error } = await supabase
-            .from('messages')
-            .select('*')
-            .order('created_at', { ascending: true })
-            .limit(50);
+    // 2. Fetch initial messages
+    fetchLatestMessages();
 
-          if (!error && data && data.length > 0) {
-            setMessages(data as HubMessage[]);
-            return;
-          }
-        } catch (err) {
-          console.warn('Could not load messages from Supabase:', err);
+    // 3. Supabase Realtime Channel: Listen to both Broadcast & Postgres Changes
+    const channel = supabase.channel('aetherhub-realtime', {
+      config: { broadcast: { self: false } },
+    });
+
+    channel
+      // A: Listen to broadcast messages from other clients (Instant 0ms latency)
+      .on('broadcast', { event: 'new_message' }, (payload) => {
+        const incoming = payload.payload as HubMessage;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === incoming.id)) return prev;
+          playChime('click');
+          return [...prev, incoming];
+        });
+      })
+      // B: Listen to PostgreSQL table changes
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const incoming = payload.new as HubMessage;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === incoming.id)) return prev;
+            playChime('click');
+            return [...prev, incoming];
+          });
         }
-      }
-
-      // Fallback to local storage
-      try {
-        const savedChat = localStorage.getItem('aetherhub_chat_messages');
-        if (savedChat) {
-          const parsed = JSON.parse(savedChat);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setMessages(parsed);
-          }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Realtime chat channel connected');
         }
-      } catch {
-        // Ignore
-      }
-    }
+      });
 
-    loadMessages();
-
-    // Supabase Realtime channel subscription
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    if (isSupabaseConfigured) {
-      try {
-        channel = supabase
-          .channel('public:messages')
-          .on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'messages' },
-            (payload) => {
-              const newMsg = payload.new as HubMessage;
-              setMessages((prev) => {
-                if (prev.some((m) => m.id === newMsg.id)) return prev;
-                return [...prev, newMsg];
-              });
-              playChime('click');
-            }
-          )
-          .subscribe();
-      } catch (err) {
-        console.warn('Realtime channel error:', err);
-      }
-    }
+    // 4. Polling Fallback: Refresh messages every 3 seconds
+    const interval = setInterval(fetchLatestMessages, 3000);
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      clearInterval(interval);
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchLatestMessages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -179,23 +171,26 @@ export const LiveChat: React.FC = () => {
       created_at: new Date().toISOString(),
     };
 
-    // Optimistic UI update
-    setMessages((prev) => {
-      const updated = [...prev, newMsg];
-      try {
-        localStorage.setItem('aetherhub_chat_messages', JSON.stringify(updated.slice(-50)));
-      } catch {
-        // Ignore
-      }
-      return updated;
-    });
-
+    // 1. Optimistic UI update for sender
+    setMessages((prev) => [...prev, newMsg]);
     playChime('upload');
 
-    // Transmit to Supabase
+    // 2. Broadcast immediately over WebSocket to all other users
+    try {
+      const channel = supabase.channel('aetherhub-realtime');
+      channel.send({
+        type: 'broadcast',
+        event: 'new_message',
+        payload: newMsg,
+      });
+    } catch (bErr) {
+      console.warn('Broadcast chat error:', bErr);
+    }
+
+    // 3. Persist to Supabase Database
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase.from('messages').insert([
+        await supabase.from('messages').insert([
           {
             id: tempId,
             sender_name: userName,
@@ -203,10 +198,6 @@ export const LiveChat: React.FC = () => {
             avatar_color: userColor,
           },
         ]);
-
-        if (error) {
-          console.warn('Supabase message insert error:', error.message);
-        }
       } catch (err) {
         console.warn('Message send exception:', err);
       }
@@ -242,7 +233,7 @@ export const LiveChat: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5 text-cyan-neon" />
             </h3>
             <p className="text-xs text-slate-400">
-              ช่องสนทนาแบบเรียลไทม์ระหว่างสมาชิกสถานี เชื่อมต่อกับ Supabase
+              สัญญาณแชตสดแบบเรียลไทม์ระหว่างสมาชิกสถานี ส่งตรงทันทีทุกเครื่อง
             </p>
           </div>
         </div>
@@ -275,7 +266,7 @@ export const LiveChat: React.FC = () => {
               title="คลิกเพื่อเปลี่ยนนามเรียกขาน"
             >
               <span
-                className="w-2.5 h-2.5 rounded-full"
+                className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor]"
                 style={{ backgroundColor: userColor }}
               />
               <span className="font-medium text-cyan-bright">{userName}</span>

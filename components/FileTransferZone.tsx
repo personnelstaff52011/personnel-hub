@@ -66,7 +66,7 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
 
         if (uploadError) {
           console.warn('Storage upload error, attempting fallback URL:', uploadError);
-          showToast(`ข้อผิดพลาด Storage: ${uploadError.message}`, 'error');
+          showToast(`Storage: ${uploadError.message}`, 'error');
           publicUrl = URL.createObjectURL(file);
         } else {
           const { data: urlData } = supabase.storage
@@ -93,23 +93,30 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
         clearInterval(progressTimer);
         setUploadProgress(100);
 
-        if (!dbError && record) {
-          playChime('upload');
-          showToast(`ดึงไฟล์ "${file.name}" เข้าสู่วงโคจรสำเร็จ!`, 'success');
-          onFileUploaded(record as HubFile);
-        } else {
-          const fallbackFile: HubFile = {
-            id: crypto.randomUUID(),
-            filename: file.name,
-            file_size: file.size,
-            mime_type: file.type || 'application/octet-stream',
-            public_url: publicUrl,
-            storage_path: storagePath,
-            created_at: new Date().toISOString(),
-          };
-          playChime('upload');
-          showToast(`อัปโหลด "${file.name}" สู่ Storage เรียบร้อย`, 'success');
-          onFileUploaded(fallbackFile);
+        const savedFile: HubFile = (record as HubFile) || {
+          id: crypto.randomUUID(),
+          filename: file.name,
+          file_size: file.size,
+          mime_type: file.type || 'application/octet-stream',
+          public_url: publicUrl,
+          storage_path: storagePath,
+          created_at: new Date().toISOString(),
+        };
+
+        playChime('upload');
+        showToast(`ดึงไฟล์ "${file.name}" เข้าสู่วงโคจรสำเร็จ!`, 'success');
+        onFileUploaded(savedFile);
+
+        // Broadcast to other users in real-time
+        try {
+          const channel = supabase.channel('aetherhub-realtime');
+          channel.send({
+            type: 'broadcast',
+            event: 'new_file',
+            payload: savedFile,
+          });
+        } catch (bErr) {
+          console.warn('Broadcast file error:', bErr);
         }
       } else {
         clearInterval(progressTimer);
@@ -219,7 +226,7 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
           </div>
         </div>
 
-        {/* Thai Typography */}
+        {/* Typography */}
         <div className="text-center z-10 max-w-md">
           <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/[0.04] border border-white/10 text-cyan-bright mb-3">
             <Sparkles className="w-3.5 h-3.5" />
@@ -237,7 +244,7 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
           </h3>
 
           <p className="text-xs sm:text-sm text-slate-400">
-            อัปโหลดขึ้น Supabase Storage อัตโนมัติ พร้อมสร้างรหัสคิวอาร์ (QR Beam) ให้สแกนรับไฟล์ได้ทันที
+            อัปโหลดขึ้น Supabase Storage พร้อมส่งสัญญาณเรียลไทม์ และสร้าง QR Code ให้ผู้ใช้อื่นสแกนได้ทันที
           </p>
         </div>
 
@@ -270,9 +277,9 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
         <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-center space-x-4 text-[11px] text-slate-400">
           <span>ขนาดสูงสุด: 50MB</span>
           <span>•</span>
-          <span>บีบอัดข้อมูลแบบไร้การสูญเสีย</span>
+          <span>ซิงค์เรียลไทม์ทุกหน้าจอ</span>
           <span>•</span>
-          <span>พร้อมสร้าง QR Code สแกน</span>
+          <span>สแกนกล้องมือถือติดทันที</span>
         </div>
       </div>
     </div>

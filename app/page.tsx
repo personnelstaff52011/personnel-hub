@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles,
@@ -26,7 +26,7 @@ import { playChime } from '@/lib/utils';
 const DEMO_FILES: HubFile[] = [
   {
     id: 'demo-1',
-    filename: 'คู่มือกำลังพล-กองพลทหารช่าง.pdf',
+    filename: 'คู่มือภารกิจ-AetherHub.pdf',
     file_size: 2450000,
     mime_type: 'application/pdf',
     public_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
@@ -40,14 +40,6 @@ const DEMO_FILES: HubFile[] = [
     public_url: 'https://raw.githubusercontent.com/vercel/next.js/canary/package.json',
     created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
   },
-  {
-    id: 'demo-3',
-    filename: 'ภาพถ่ายเนบิวลา_Supernova.webp',
-    file_size: 3820000,
-    mime_type: 'image/webp',
-    public_url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1200&q=80',
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
 ];
 
 function AetherHubContent() {
@@ -57,74 +49,130 @@ function AetherHubContent() {
   const [showSqlGuide, setShowSqlGuide] = useState(false);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    async function loadFiles() {
-      if (isSupabaseConfigured) {
-        try {
-          const { data, error } = await supabase
-            .from('files')
-            .select('*')
-            .order('created_at', { ascending: false });
+  const fetchFiles = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { data, error } = await supabase
+        .from('files')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-          if (!error && data && data.length > 0) {
-            setFiles(data as HubFile[]);
-            return;
+      if (!error && data) {
+        setFiles((prev) => {
+          // If we had demo files or local files, replace or merge
+          if (data.length > 0) {
+            return data as HubFile[];
           }
-        } catch (err) {
-          console.error('Failed to fetch from Supabase:', err);
-        }
+          return prev.length > 0 ? prev : DEMO_FILES;
+        });
       }
-
-      try {
-        const localCached = localStorage.getItem('aetherhub_local_files');
-        if (localCached) {
-          const parsed = JSON.parse(localCached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setFiles(parsed);
-            return;
-          }
-        }
-      } catch {
-        // Ignore
-      }
-
-      setFiles(DEMO_FILES);
+    } catch (err) {
+      console.warn('Sync files error:', err);
     }
-
-    loadFiles();
   }, []);
+
+  useEffect(() => {
+    // 1. Initial Load
+    fetchFiles();
+
+    // 2. Real-time Channel for Files: Broadcast & Postgres Changes
+    const channel = supabase.channel('aetherhub-realtime', {
+      config: { broadcast: { self: false } },
+    });
+
+    channel
+      // A: Listen to broadcast from other clients (Instant 0ms latency)
+      .on('broadcast', { event: 'new_file' }, (payload) => {
+        const incoming = payload.payload as HubFile;
+        setFiles((prev) => {
+          if (prev.some((f) => f.id === incoming.id)) return prev;
+          playChime('upload');
+          showToast(`มีไฟล์ใหม่ในวงโคจร: "${incoming.filename}"`, 'info');
+          return [incoming, ...prev];
+        });
+      })
+      .on('broadcast', { event: 'delete_file' }, (payload) => {
+        const deletedId = (payload.payload as { id: string })?.id;
+        if (deletedId) {
+          setFiles((prev) => prev.filter((f) => f.id !== deletedId));
+        }
+      })
+      // B: Listen to PostgreSQL changes on `files` table
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'files' },
+        (payload) => {
+          const incoming = payload.new as HubFile;
+          setFiles((prev) => {
+            if (prev.some((f) => f.id === incoming.id)) return prev;
+            return [incoming, ...prev];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'files' },
+        (payload) => {
+          const deletedId = (payload.old as { id: string })?.id;
+          if (deletedId) {
+            setFiles((prev) => prev.filter((f) => f.id !== deletedId));
+          }
+        }
+      )
+      .subscribe();
+
+    // 3. Polling Fallback: Refresh files every 4 seconds
+    const interval = setInterval(fetchFiles, 4000);
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [fetchFiles, showToast]);
 
   const handleFileUploaded = (newFile: HubFile) => {
     setFiles((prev) => {
       const updated = [newFile, ...prev.filter((f) => f.id !== newFile.id)];
-      try {
-        localStorage.setItem('aetherhub_local_files', JSON.stringify(updated.slice(0, 15)));
-      } catch {
-        // Ignore
-      }
       return updated;
     });
 
+    // Automatically load the public URL into QR Studio
     setQrTargetValue(newFile.public_url);
+
+    // Broadcast file to other users
+    try {
+      const channel = supabase.channel('aetherhub-realtime');
+      channel.send({
+        type: 'broadcast',
+        event: 'new_file',
+        payload: newFile,
+      });
+    } catch {
+      // Ignore
+    }
   };
 
   const handleFileDeleted = (id: string) => {
-    setFiles((prev) => {
-      const updated = prev.filter((f) => f.id !== id);
-      try {
-        localStorage.setItem('aetherhub_local_files', JSON.stringify(updated));
-      } catch {
-        // Ignore
-      }
-      return updated;
-    });
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+
+    // Broadcast delete to other users
+    try {
+      const channel = supabase.channel('aetherhub-realtime');
+      channel.send({
+        type: 'broadcast',
+        event: 'delete_file',
+        payload: { id },
+      });
+    } catch {
+      // Ignore
+    }
   };
 
   const handleSelectQrFile = (file: HubFile) => {
     playChime('click');
     setQrTargetValue(file.public_url);
     setActiveTab('qr');
-    showToast(`โหลดลิงก์ "${file.filename}" เข้าสู่ QR Studio เรียบร้อย`, 'info');
+    showToast(`สร้างรหัส QR สำหรับ "${file.filename}" เรียบร้อย (สแกนได้ทันที)`, 'success');
 
     const qrElement = document.getElementById('qr-studio-section');
     if (qrElement) {
@@ -138,32 +186,31 @@ function AetherHubContent() {
 
       {/* Header */}
       <header className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <div className="flex items-center space-x-3.5">
+        <div className="flex items-center space-x-3">
           <motion.div
             animate={{
-              y: [0, -3, 0],
+              y: [0, -5, 0],
+              rotate: [0, 2, -2, 0],
             }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-1 bg-gradient-to-tr from-amber-500/40 via-yellow-400/30 to-amber-600/40 shadow-[0_0_25px_rgba(245,158,11,0.3)] border border-amber-400/40 flex items-center justify-center bg-space-950/80 backdrop-blur-md"
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-violet-glow via-cyan-neon to-cyan-bright p-[1.5px] shadow-[0_0_20px_rgba(6,182,212,0.4)]"
           >
-            <img
-              src="/logo.png"
-              alt="ตราสัญลักษณ์ กองพลทหารช่าง"
-              className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
-            />
+            <div className="w-full h-full rounded-[14px] bg-space-950 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-cyan-bright" />
+            </div>
           </motion.div>
 
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-amber-100 via-white to-amber-300 bg-clip-text text-transparent">
-                ครอบครัว กำลังพล กองพลทหารช่าง
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-bright bg-clip-text text-transparent">
+                AetherHub
               </h1>
-              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                ระบบสารสนเทศ
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-glow/20 text-violet-soft border border-violet-glow/30">
+                เรียลไทม์ควอนตัม
               </span>
             </div>
-            <p className="text-[11px] text-slate-300 hidden sm:block">
-              ศูนย์บริการไฟล์ ส่งต่อรหัสคิวอาร์ และระบบสื่อสารกำลังพล กองพลทหารช่าง
+            <p className="text-[11px] text-slate-400 hidden sm:block">
+              ศูนย์ปฏิบัติการส่งต่อไฟล์ รหัสคิวอาร์ และระบบสื่อสารเรียลไทม์
             </p>
           </div>
         </div>
@@ -177,7 +224,7 @@ function AetherHubContent() {
             className="hidden md:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10 transition-colors"
           >
             <Terminal className="w-3.5 h-3.5 text-cyan-neon" />
-            <span>ตั้งค่า Supabase</span>
+            <span>คำสั่ง SQL (Supabase)</span>
             <ChevronDown className={`w-3 h-3 transition-transform ${showSqlGuide ? 'rotate-180' : ''}`} />
           </button>
         </div>
@@ -196,7 +243,7 @@ function AetherHubContent() {
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
                 <div className="flex items-center space-x-2 text-cyan-bright font-semibold">
                   <Database className="w-4 h-4" />
-                  <span>ขั้นตอนการเชื่อมต่อฐานข้อมูล Supabase</span>
+                  <span>คำแนะนำการเปิดใช้งาน Realtime Replication บน Supabase</span>
                 </div>
                 <button
                   onClick={() => setShowSqlGuide(false)}
@@ -207,13 +254,12 @@ function AetherHubContent() {
               </div>
 
               <p className="text-slate-300 mb-2">
-                คุณสามารถนำสคริปต์ในไฟล์ <code className="text-cyan-bright bg-space-850 px-1.5 py-0.5 rounded">supabase-schema.sql</code> ไปวางในเมนู SQL Editor บน Supabase เพื่อสร้างระบบทั้งหมด:
+                ขณะนี้ระบบใช้ช่องสัญญาณ <strong>Realtime Broadcast + Database Replication + Background Polling</strong> ร่วมกันเพื่อให้การแชตและไฟล์ซิงค์แบบเรียลไทม์ 100%:
               </p>
 
               <ol className="list-decimal list-inside space-y-1 text-slate-400 font-mono text-xs">
-                <li>สร้าง Storage Bucket ชื่อ <span className="text-cyan-bright">`hub-files`</span> สำหรับอัปโหลดไฟล์</li>
-                <li>สร้างตาราง <span className="text-violet-soft">`files`</span>, <span className="text-violet-soft">`notes`</span>, และ <span className="text-cyan-bright">`messages`</span> (ระบบแชต)</li>
-                <li>กำหนดค่าความปลอดภัย (RLS) และเปิดใช้งาน Supabase Realtime พร้อมใช้งานทันที</li>
+                <li>เปิดเมนู SQL Editor บน Supabase แล้วรันคำสั่งใน <span className="text-cyan-bright">`supabase-schema.sql`</span></li>
+                <li>ไปที่ <strong>Database</strong> &gt; <strong>Publications</strong> &gt; ตรวจสอบว่า <span className="text-violet-soft">`supabase_realtime`</span> ได้เลือกตาราง <span className="text-cyan-bright">files, messages, notes</span> แล้ว</li>
               </ol>
             </div>
           </motion.div>
@@ -229,7 +275,7 @@ function AetherHubContent() {
           className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full glass-panel border-cyan-neon/30 text-xs font-medium text-cyan-bright mb-4 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
         >
           <Sparkles className="w-3.5 h-3.5 animate-spin" />
-          <span>ระบบคลาวด์ส่งต่อข้อมูลไร้แรงโน้มถ่วง &amp; การสื่อสารเรียลไทม์</span>
+          <span>ระบบส่งต่อไฟล์และแชตสดแบบเรียลไทม์ข้ามทุกอุปกรณ์ (Live Sync)</span>
         </motion.div>
 
         <motion.h2
@@ -250,7 +296,7 @@ function AetherHubContent() {
           transition={{ duration: 0.7, delay: 0.2 }}
           className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto mt-3"
         >
-          ลากไฟล์ลงสู่แกนดึงดูดสสาร สร้างคิวอาร์โค้ดส่งต่อทันที แชตสดร่วมกับสมาชิก และโฟกัสการทำงานในบรรยากาศอวกาศ
+          ลากไฟล์ลงสู่แกนดึงดูดสสาร สร้างคิวอาร์โค้ดสแกนติดง่าย 100% แชตสดร่วมกับสมาชิก และโฟกัสการทำงานในบรรยากาศอวกาศ
         </motion.p>
       </section>
 
@@ -296,7 +342,7 @@ function AetherHubContent() {
           </motion.section>
         )}
 
-        {/* VIEW: Micro-Tools (Scratchpad + Focus Hub) */}
+        {/* VIEW: Micro-Tools */}
         {(activeTab === 'all' || activeTab === 'notes' || activeTab === 'timer') && (
           <motion.section
             initial={{ opacity: 0, y: 20 }}
