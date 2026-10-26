@@ -38,8 +38,8 @@ export const LatencyBadge: React.FC = () => {
       try {
         const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
         if (!url) throw new Error('No URL');
-        // Ping Supabase public REST health/root
-        const res = await fetch(`${url}/rest/v1/`, {
+        // Ping Supabase public REST endpoint
+        await fetch(`${url}/rest/v1/`, {
           method: 'HEAD',
           headers: {
             apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
@@ -50,7 +50,6 @@ export const LatencyBadge: React.FC = () => {
         setLatency(elapsed);
         setStatus('connected');
       } catch {
-        // Fallback to local latency
         setLatency(Math.round(performance.now() - start) || 28);
         setStatus('demo');
       }
@@ -71,13 +70,13 @@ export const LatencyBadge: React.FC = () => {
       className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-xl border transition-all duration-300 select-none bg-space-900/60 border-white/10 hover:border-cyan-neon/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)]"
       title={
         status === 'connected'
-          ? 'Supabase Real-Time Engine Active'
+          ? 'เชื่อมต่อกับระบบคลาวด์ Supabase แบบเรียลไทม์'
           : status === 'demo'
-          ? 'Demo Mode Active (Add Supabase credentials to .env.local to activate cloud storage)'
-          : 'Network Disconnected'
+          ? 'โหมดจำลองในเครื่อง (ใส่ค่าใน .env.local เพื่อเชื่อมต่อคลาวด์)'
+          : 'เครือข่ายออฟไลน์'
       }
     >
-      {/* Status Indicator Dot with Pulse */}
+      {/* Pulse Status Dot */}
       <div className="relative flex items-center justify-center">
         <span
           className={`h-2 w-2 rounded-full ${
@@ -103,7 +102,7 @@ export const LatencyBadge: React.FC = () => {
         {status === 'connected' && (
           <>
             <Database className="w-3.5 h-3.5 text-cyan-neon" />
-            <span className="text-slate-200">Supabase</span>
+            <span className="text-slate-200">เชื่อมต่อ Supabase</span>
             {latency !== null && (
               <span className="text-cyan-bright font-mono">{latency}ms</span>
             )}
@@ -112,14 +111,14 @@ export const LatencyBadge: React.FC = () => {
         {status === 'demo' && (
           <>
             <ShieldCheck className="w-3.5 h-3.5 text-violet-soft" />
-            <span className="text-violet-soft">Local Hub</span>
-            <span className="text-slate-400 font-mono text-[11px]">(Demo)</span>
+            <span className="text-violet-soft">โหมดจำลอง</span>
+            <span className="text-slate-400 font-mono text-[11px]">(เครื่อง)</span>
           </>
         )}
         {status === 'offline' && (
           <>
             <WifiOff className="w-3.5 h-3.5 text-rose-400" />
-            <span className="text-rose-400">Offline</span>
+            <span className="text-rose-400">ออฟไลน์</span>
           </>
         )}
       </div>

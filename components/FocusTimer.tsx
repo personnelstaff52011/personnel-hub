@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, RotateCcw, Clock, Sparkles, Volume2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Clock } from 'lucide-react';
 import { playChime } from '@/lib/utils';
 import { useToast } from './ToastContext';
 
@@ -10,14 +10,14 @@ type TimerMode = 'focus' | 'short' | 'long';
 
 interface TimerPreset {
   label: string;
-  duration: number; // in seconds
+  duration: number;
   mode: TimerMode;
 }
 
 const PRESETS: TimerPreset[] = [
-  { label: 'Deep Focus', duration: 25 * 60, mode: 'focus' },
-  { label: 'Nebula Break', duration: 5 * 60, mode: 'short' },
-  { label: 'Long Stasis', duration: 15 * 60, mode: 'long' },
+  { label: 'โฟกัสเข้มข้น', duration: 25 * 60, mode: 'focus' },
+  { label: 'พักเบรกสั้น', duration: 5 * 60, mode: 'short' },
+  { label: 'พักเบรกยาว', duration: 15 * 60, mode: 'long' },
 ];
 
 export const FocusTimer: React.FC = () => {
@@ -36,7 +36,7 @@ export const FocusTimer: React.FC = () => {
     } else if (timeLeft === 0 && isRunning) {
       setIsRunning(false);
       playChime('complete');
-      showToast('🎉 Focus Orbit Completed! Take a deep breath.', 'success');
+      showToast('🎉 ครบเวลาแล้ว! พักผ่อนและผ่อนคลายสักครู่ครับ', 'success');
     }
 
     return () => {
@@ -66,7 +66,6 @@ export const FocusTimer: React.FC = () => {
   const seconds = timeLeft % 60;
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-  // Circular progress calculation
   const radius = 64;
   const circumference = 2 * Math.PI * radius;
   const progressRatio = timeLeft / selectedPreset.duration;
@@ -82,13 +81,13 @@ export const FocusTimer: React.FC = () => {
           </div>
           <div>
             <h4 className="text-base font-semibold text-white flex items-center space-x-1.5">
-              <span>Zero-Gravity Focus Core</span>
+              <span>แกนเวลาและสมาธิ (Focus Core)</span>
             </h4>
-            <p className="text-[11px] text-slate-400">Pomodoro time dilation chamber</p>
+            <p className="text-[11px] text-slate-400">นาฬิกาโฟกัสการทำงานสไตล์ Pomodoro</p>
           </div>
         </div>
 
-        {/* Mode presets pills */}
+        {/* Mode presets */}
         <div className="flex items-center space-x-1 bg-space-900/80 p-1 rounded-xl border border-white/10">
           {PRESETS.map((p) => (
             <button
@@ -100,15 +99,14 @@ export const FocusTimer: React.FC = () => {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              {p.label.split(' ')[0]}
+              {p.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Circular Progress Ring & Holographic Clock */}
+      {/* Progress Ring */}
       <div className="relative flex items-center justify-center py-4">
-        {/* Glow Halo */}
         <div
           className={`absolute w-44 h-44 rounded-full blur-2xl transition-opacity duration-700 pointer-events-none ${
             isRunning ? 'bg-cyan-neon/20 opacity-100' : 'bg-violet-glow/10 opacity-40'
@@ -116,7 +114,6 @@ export const FocusTimer: React.FC = () => {
         />
 
         <svg className="w-44 h-44 -rotate-90 transform" viewBox="0 0 160 160">
-          {/* Base track */}
           <circle
             cx="80"
             cy="80"
@@ -125,7 +122,6 @@ export const FocusTimer: React.FC = () => {
             strokeWidth="6"
             fill="transparent"
           />
-          {/* Glowing active neon ring */}
           <circle
             cx="80"
             cy="80"
@@ -146,7 +142,7 @@ export const FocusTimer: React.FC = () => {
           </defs>
         </svg>
 
-        {/* Center Clock Display with Floating Zero-Gravity Float */}
+        {/* Center Clock */}
         <motion.div
           animate={{
             y: isRunning ? [0, -4, 0] : 0,
@@ -158,12 +154,12 @@ export const FocusTimer: React.FC = () => {
             {formattedTime}
           </span>
           <span className="text-[11px] font-medium text-cyan-bright mt-0.5 tracking-wider uppercase">
-            {isRunning ? 'In Orbit' : 'Stasis'}
+            {isRunning ? 'กำลังโฟกัส' : 'หยุดพัก'}
           </span>
         </motion.div>
       </div>
 
-      {/* Controls Bar */}
+      {/* Controls */}
       <div className="pt-4 border-t border-white/[0.06] flex items-center justify-center space-x-3">
         <button
           onClick={toggleRun}
@@ -176,12 +172,12 @@ export const FocusTimer: React.FC = () => {
           {isRunning ? (
             <>
               <Pause className="w-4 h-4 text-cyan-bright" />
-              <span>Pause Horizon</span>
+              <span>หยุดชั่วคราว</span>
             </>
           ) : (
             <>
               <Play className="w-4 h-4 fill-current" />
-              <span>Engage Focus</span>
+              <span>เริ่มการโฟกัส</span>
             </>
           )}
         </button>
@@ -189,7 +185,7 @@ export const FocusTimer: React.FC = () => {
         <button
           onClick={resetTimer}
           className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-slate-400 hover:text-white border border-white/10 transition-colors"
-          title="Reset Timer"
+          title="รีเซ็ตเวลา"
         >
           <RotateCcw className="w-4 h-4" />
         </button>

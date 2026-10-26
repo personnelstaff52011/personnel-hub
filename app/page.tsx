@@ -1,222 +1,332 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Orbit, ShieldCheck, Database, HelpCircle } from 'lucide-react';
-import { ToastProvider, useToast } from '@/components/ToastContext';
+import {
+  Sparkles,
+  Zap,
+  Database,
+  ChevronDown,
+  Terminal,
+} from 'lucide-react';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { LatencyBadge } from '@/components/LatencyBadge';
 import { Dock } from '@/components/Dock';
 import { FileTransferZone } from '@/components/FileTransferZone';
 import { FileList } from '@/components/FileList';
 import { QrStudio } from '@/components/QrStudio';
+import { LiveChat } from '@/components/LiveChat';
 import { QuickScratchpad } from '@/components/QuickScratchpad';
 import { FocusTimer } from '@/components/FocusTimer';
+import { ToastProvider, useToast } from '@/components/ToastContext';
 import { HubFile, ActiveWidget } from '@/lib/types';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { playChime } from '@/lib/utils';
 
-function MainApp() {
+const DEMO_FILES: HubFile[] = [
+  {
+    id: 'demo-1',
+    filename: 'คู่มือภารกิจ-AetherHub.pdf',
+    file_size: 2450000,
+    mime_type: 'application/pdf',
+    public_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
+  },
+  {
+    id: 'demo-2',
+    filename: 'พิกัดและข้อมูลดาราศาสตร์.json',
+    file_size: 48900,
+    mime_type: 'application/json',
+    public_url: 'https://raw.githubusercontent.com/vercel/next.js/canary/package.json',
+    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
+  },
+  {
+    id: 'demo-3',
+    filename: 'ภาพถ่ายเนบิวลา_Supernova.webp',
+    file_size: 3820000,
+    mime_type: 'image/webp',
+    public_url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1200&q=80',
+    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+  },
+];
+
+function AetherHubContent() {
   const [activeTab, setActiveTab] = useState<ActiveWidget>('all');
   const [files, setFiles] = useState<HubFile[]>([]);
-  const [selectedQrUrl, setSelectedQrUrl] = useState<string>('https://aetherhub.vercel.app');
-  const [loading, setLoading] = useState(true);
+  const [qrTargetValue, setQrTargetValue] = useState<string>('https://aetherhub.vercel.app');
+  const [showSqlGuide, setShowSqlGuide] = useState(false);
   const { showToast } = useToast();
 
-  const fetchFiles = useCallback(async () => {
-    try {
-      if (isSupabaseConfigured && supabase) {
-        const { data, error } = await supabase
-          .from('files')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        if (data) {
-          setFiles(data as HubFile[]);
-        }
-      } else {
-        // Fallback: load local mock/saved files
-        const saved = localStorage.getItem('aetherhub_local_files');
-        if (saved) {
-          setFiles(JSON.parse(saved));
-        }
-      }
-    } catch (err: any) {
-      console.warn('Failed to load files from Supabase:', err.message);
-      const saved = localStorage.getItem('aetherhub_local_files');
-      if (saved) {
-        setFiles(JSON.parse(saved));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchFiles();
-  }, [fetchFiles]);
+    async function loadFiles() {
+      if (isSupabaseConfigured) {
+        try {
+          const { data, error } = await supabase
+            .from('files')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (!error && data && data.length > 0) {
+            setFiles(data as HubFile[]);
+            return;
+          }
+        } catch (err) {
+          console.error('Failed to fetch from Supabase:', err);
+        }
+      }
+
+      try {
+        const localCached = localStorage.getItem('aetherhub_local_files');
+        if (localCached) {
+          const parsed = JSON.parse(localCached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setFiles(parsed);
+            return;
+          }
+        }
+      } catch {
+        // Ignore
+      }
+
+      setFiles(DEMO_FILES);
+    }
+
+    loadFiles();
+  }, []);
 
   const handleFileUploaded = (newFile: HubFile) => {
     setFiles((prev) => {
-      const updated = [newFile, ...prev];
-      if (!isSupabaseConfigured) {
-        localStorage.setItem('aetherhub_local_files', JSON.stringify(updated));
+      const updated = [newFile, ...prev.filter((f) => f.id !== newFile.id)];
+      try {
+        localStorage.setItem('aetherhub_local_files', JSON.stringify(updated.slice(0, 15)));
+      } catch {
+        // Ignore
       }
       return updated;
     });
-    setSelectedQrUrl(newFile.public_url);
-    showToast(`"${newFile.filename}" uploaded successfully!`, 'success');
+
+    setQrTargetValue(newFile.public_url);
   };
 
   const handleFileDeleted = (id: string) => {
     setFiles((prev) => {
       const updated = prev.filter((f) => f.id !== id);
-      if (!isSupabaseConfigured) {
+      try {
         localStorage.setItem('aetherhub_local_files', JSON.stringify(updated));
+      } catch {
+        // Ignore
       }
       return updated;
     });
-    showToast('File removed', 'info');
   };
 
   const handleSelectQrFile = (file: HubFile) => {
-    setSelectedQrUrl(file.public_url);
+    playChime('click');
+    setQrTargetValue(file.public_url);
     setActiveTab('qr');
-    showToast(`QR loaded for ${file.filename}`, 'info');
+    showToast(`โหลดลิงก์ "${file.filename}" เข้าสู่ QR Studio เรียบร้อย`, 'info');
+
+    const qrElement = document.getElementById('qr-studio-section');
+    if (qrElement) {
+      qrElement.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
-    <div className="relative min-h-screen text-slate-100 pb-32">
+    <div className="relative min-h-screen pb-32 text-slate-100 flex flex-col">
       <AmbientBackground />
 
-      {/* Header bar */}
-      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-space-950/70 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-glow to-violet-glow flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)]">
-              <Orbit className="w-5 h-5 text-white animate-spin-slow" />
+      {/* Header */}
+      <header className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <motion.div
+            animate={{
+              y: [0, -5, 0],
+              rotate: [0, 2, -2, 0],
+            }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-violet-glow via-cyan-neon to-cyan-bright p-[1.5px] shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+          >
+            <div className="w-full h-full rounded-[14px] bg-space-950 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-cyan-bright" />
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-lg font-bold tracking-tight text-white">AETHERHUB</h1>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-glow/10 text-cyan-glow border border-cyan-glow/20">
-                  v2.0
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">Zero-Gravity Workspace & Dynamic QR Node</p>
-            </div>
-          </div>
+          </motion.div>
 
-          <div className="flex items-center space-x-3">
-            <LatencyBadge />
+          <div>
+            <div className="flex items-center space-x-2">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-bright bg-clip-text text-transparent">
+                AetherHub
+              </h1>
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-glow/20 text-violet-soft border border-violet-glow/30">
+                เวอร์ชัน ไร้แรงโน้มถ่วง
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 hidden sm:block">
+              ศูนย์ปฏิบัติการส่งต่อไฟล์ รหัสคิวอาร์ และระบบสื่อสารเรียลไทม์
+            </p>
           </div>
+        </div>
+
+        {/* Latency & Setup */}
+        <div className="flex items-center space-x-3">
+          <LatencyBadge />
+
+          <button
+            onClick={() => setShowSqlGuide(!showSqlGuide)}
+            className="hidden md:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10 transition-colors"
+          >
+            <Terminal className="w-3.5 h-3.5 text-cyan-neon" />
+            <span>ตั้งค่า Supabase</span>
+            <ChevronDown className={`w-3 h-3 transition-transform ${showSqlGuide ? 'rotate-180' : ''}`} />
+          </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <AnimatePresence mode="wait">
-          {activeTab === 'all' && (
-            <motion.div
-              key="all"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-8"
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* File Upload & Ingestion */}
-                <div className="lg:col-span-7 space-y-6">
-                  <FileTransferZone onFileUploaded={handleFileUploaded} />
-                  <FileList
-                    files={files}
-                    onSelectQrFile={handleSelectQrFile}
-                    onFileDeleted={handleFileDeleted}
-                  />
+      {/* Supabase Guide Accordion */}
+      <AnimatePresence>
+        {showSqlGuide && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="relative z-30 max-w-7xl mx-auto px-4 sm:px-6 mt-4 w-full overflow-hidden"
+          >
+            <div className="p-5 rounded-2xl glass-panel-glow border-cyan-neon/30 text-xs sm:text-sm">
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+                <div className="flex items-center space-x-2 text-cyan-bright font-semibold">
+                  <Database className="w-4 h-4" />
+                  <span>ขั้นตอนการเชื่อมต่อฐานข้อมูล Supabase</span>
                 </div>
-
-                {/* QR Studio & Micro-tools */}
-                <div className="lg:col-span-5 space-y-6">
-                  <QrStudio initialValue={selectedQrUrl} />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
-                    <FocusTimer />
-                    <QuickScratchpad />
-                  </div>
-                </div>
+                <button
+                  onClick={() => setShowSqlGuide(false)}
+                  className="text-slate-400 hover:text-white text-xs"
+                >
+                  ปิด
+                </button>
               </div>
-            </motion.div>
-          )}
 
-          {activeTab === 'files' && (
-            <motion.div
-              key="files"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-              className="max-w-4xl mx-auto space-y-8"
-            >
-              <FileTransferZone onFileUploaded={handleFileUploaded} />
-              <FileList
-                files={files}
-                onSelectQrFile={handleSelectQrFile}
-                onFileDeleted={handleFileDeleted}
-              />
-            </motion.div>
-          )}
+              <p className="text-slate-300 mb-2">
+                คุณสามารถนำสคริปต์ในไฟล์ <code className="text-cyan-bright bg-space-850 px-1.5 py-0.5 rounded">supabase-schema.sql</code> ไปวางในเมนู SQL Editor บน Supabase เพื่อสร้างระบบทั้งหมด:
+              </p>
 
-          {activeTab === 'qr' && (
-            <motion.div
-              key="qr"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-              className="max-w-2xl mx-auto"
-            >
-              <QrStudio initialValue={selectedQrUrl} />
-            </motion.div>
-          )}
+              <ol className="list-decimal list-inside space-y-1 text-slate-400 font-mono text-xs">
+                <li>สร้าง Storage Bucket ชื่อ <span className="text-cyan-bright">`hub-files`</span> สำหรับอัปโหลดไฟล์</li>
+                <li>สร้างตาราง <span className="text-violet-soft">`files`</span>, <span className="text-violet-soft">`notes`</span>, และ <span className="text-cyan-bright">`messages`</span> (ระบบแชต)</li>
+                <li>กำหนดค่าความปลอดภัย (RLS) และเปิดใช้งาน Supabase Realtime พร้อมใช้งานทันที</li>
+              </ol>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {activeTab === 'notes' && (
-            <motion.div
-              key="notes"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-              className="max-w-3xl mx-auto"
-            >
-              <QuickScratchpad />
-            </motion.div>
-          )}
+      {/* Hero Atmosphere */}
+      <section className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full glass-panel border-cyan-neon/30 text-xs font-medium text-cyan-bright mb-4 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+        >
+          <Sparkles className="w-3.5 h-3.5 animate-spin" />
+          <span>ระบบคลาวด์ส่งต่อข้อมูลไร้แรงโน้มถ่วง &amp; การสื่อสารเรียลไทม์</span>
+        </motion.div>
 
-          {activeTab === 'timer' && (
-            <motion.div
-              key="timer"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-              className="max-w-md mx-auto"
-            >
-              <FocusTimer />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+          className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white max-w-4xl mx-auto leading-tight sm:leading-tight"
+        >
+          ส่งต่อข้อมูลของคุณสู่{' '}
+          <span className="bg-gradient-to-r from-violet-soft via-cyan-bright to-cyan-electric bg-clip-text text-transparent">
+            วงโคจรไร้แรงโน้มถ่วง
+          </span>
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+          className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto mt-3"
+        >
+          ลากไฟล์ลงสู่แกนดึงดูดสสาร สร้างคิวอาร์โค้ดส่งต่อทันที แชตสดร่วมกับสมาชิก และโฟกัสการทำงานในบรรยากาศอวกาศ
+        </motion.p>
+      </section>
+
+      {/* Main Content */}
+      <main className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 space-y-8 flex-1 w-full">
+        {/* VIEW: All or Files */}
+        {(activeTab === 'all' || activeTab === 'files') && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="space-y-6"
+          >
+            <FileTransferZone onFileUploaded={handleFileUploaded} />
+            <FileList
+              files={files}
+              onSelectQrFile={handleSelectQrFile}
+              onFileDeleted={handleFileDeleted}
+            />
+          </motion.section>
+        )}
+
+        {/* VIEW: All or QR Studio */}
+        {(activeTab === 'all' || activeTab === 'qr') && (
+          <motion.section
+            id="qr-studio-section"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <QrStudio initialValue={qrTargetValue} />
+          </motion.section>
+        )}
+
+        {/* VIEW: Live Chat */}
+        {(activeTab === 'all' || activeTab === 'chat') && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <LiveChat />
+          </motion.section>
+        )}
+
+        {/* VIEW: Micro-Tools (Scratchpad + Focus Hub) */}
+        {(activeTab === 'all' || activeTab === 'notes' || activeTab === 'timer') && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className={`grid gap-6 ${
+              activeTab === 'all'
+                ? 'grid-cols-1 lg:grid-cols-2'
+                : 'grid-cols-1'
+            }`}
+          >
+            {(activeTab === 'all' || activeTab === 'notes') && <QuickScratchpad />}
+            {(activeTab === 'all' || activeTab === 'timer') && <FocusTimer />}
+          </motion.section>
+        )}
       </main>
 
-      {/* Floating Bottom Navigation Dock */}
-      <Dock activeTab={activeTab} setActiveTab={setActiveTab} fileCount={files.length} />
+      {/* Floating Bottom Dock */}
+      <Dock
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        fileCount={files.length}
+      />
     </div>
   );
 }
 
-export default function Page() {
+export default function Home() {
   return (
     <ToastProvider>
-      <MainApp />
+      <AetherHubContent />
     </ToastProvider>
   );
 }

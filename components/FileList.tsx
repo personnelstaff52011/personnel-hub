@@ -14,14 +14,13 @@ import {
   QrCode,
   Copy,
   Trash2,
-  ExternalLink,
   Search,
   Check,
   HardDriveDownload,
   Layers,
 } from 'lucide-react';
 import { HubFile } from '@/lib/types';
-import { formatFileSize, formatDate, truncateFilename, copyToClipboard, playChime } from '@/lib/utils';
+import { formatFileSize, formatDate, copyToClipboard, playChime } from '@/lib/utils';
 import { useToast } from './ToastContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
@@ -65,10 +64,10 @@ export const FileList: React.FC<FileListProps> = ({ files, onSelectQrFile, onFil
     if (success) {
       playChime('click');
       setCopiedId(file.id);
-      showToast(`Direct beam link copied for "${file.filename}"`, 'success');
+      showToast(`คัดลอกลิงก์ของ "${file.filename}" แล้ว`, 'success');
       setTimeout(() => setCopiedId(null), 2000);
     } else {
-      showToast('Could not copy link', 'error');
+      showToast('ไม่สามารถคัดลอกลิงก์ได้', 'error');
     }
   };
 
@@ -84,10 +83,10 @@ export const FileList: React.FC<FileListProps> = ({ files, onSelectQrFile, onFil
       }
       playChime('click');
       onFileDeleted(file.id);
-      showToast(`Removed "${file.filename}" from orbit`, 'info');
+      showToast(`ลบไฟล์ "${file.filename}" ออกจากวงโคจรแล้ว`, 'info');
     } catch (err) {
       console.error('Delete error:', err);
-      showToast('Error removing file', 'error');
+      showToast('เกิดข้อผิดพลาดในการลบไฟล์', 'error');
     } finally {
       setDeletingId(null);
     }
@@ -99,16 +98,16 @@ export const FileList: React.FC<FileListProps> = ({ files, onSelectQrFile, onFil
 
   return (
     <div className="space-y-4">
-      {/* Header & Search Bar */}
+      {/* Header & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-white/[0.06]">
         <div className="flex items-center space-x-2.5">
           <div className="p-2 rounded-xl bg-violet-glow/10 border border-violet-glow/20 text-violet-soft">
             <Layers className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="text-base font-semibold text-white">Orbital Artifacts</h4>
+            <h4 className="text-base font-semibold text-white">ไฟล์ในวงโคจร (Orbital Files)</h4>
             <p className="text-xs text-slate-400">
-              {files.length} {files.length === 1 ? 'file' : 'files'} floating in active storage
+              มี {files.length} รายการที่พร้อมดาวน์โหลดและส่งต่อ
             </p>
           </div>
         </div>
@@ -118,7 +117,7 @@ export const FileList: React.FC<FileListProps> = ({ files, onSelectQrFile, onFil
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search orbiting artifacts..."
+              placeholder="ค้นหาชื่อไฟล์..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 rounded-xl text-xs bg-space-900/60 border border-white/10 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-cyan-neon/50 focus:ring-1 focus:ring-cyan-neon/30"
@@ -133,14 +132,14 @@ export const FileList: React.FC<FileListProps> = ({ files, onSelectQrFile, onFil
           <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center mx-auto mb-3 text-slate-500">
             <HardDriveDownload className="w-6 h-6" />
           </div>
-          <p className="text-sm font-medium text-slate-300">No artifacts floating in orbit yet</p>
+          <p className="text-sm font-medium text-slate-300">ยังไม่มีไฟล์ในวงโคจร</p>
           <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            Drop any file into the Gravitational Ingestion Core above to store and broadcast instantly.
+            ลากและวางไฟล์ลงในช่องด้านบนเพื่ออัปโหลดและสร้าง QR Code สำหรับแชร์ได้ทันที
           </p>
         </div>
       ) : filteredFiles.length === 0 ? (
         <div className="p-8 text-center text-xs text-slate-400">
-          No artifacts matching <span className="text-cyan-bright">&ldquo;{searchTerm}&rdquo;</span>
+          ไม่พบไฟล์ที่ตรงกับคำค้นหา <span className="text-cyan-bright">&ldquo;{searchTerm}&rdquo;</span>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -158,7 +157,7 @@ export const FileList: React.FC<FileListProps> = ({ files, onSelectQrFile, onFil
                   transition={{ duration: 0.25 }}
                   className="group relative flex flex-col justify-between p-4 rounded-2xl glass-panel hover:glass-panel-glow transition-all duration-300 border border-white/10 hover:border-cyan-neon/40 hover:-translate-y-1"
                 >
-                  {/* Top file meta */}
+                  {/* File Info */}
                   <div className="flex items-start space-x-3 mb-3">
                     <div className="p-2.5 rounded-xl bg-space-850/80 border border-white/10 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
                       {getFileIcon(file.mime_type, file.filename)}
@@ -178,35 +177,35 @@ export const FileList: React.FC<FileListProps> = ({ files, onSelectQrFile, onFil
                     </div>
                   </div>
 
-                  {/* Actions Bar */}
+                  {/* Action Buttons */}
                   <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between gap-1.5">
                     {/* QR Code Action Button */}
                     <button
                       onClick={() => onSelectQrFile(file)}
                       className="flex-1 inline-flex items-center justify-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-cyan-neon/10 hover:bg-cyan-neon/20 text-cyan-bright border border-cyan-neon/25 transition-all"
-                      title="Generate Instant QR Beam"
+                      title="สร้างรหัส QR สแกนด่วน"
                     >
                       <QrCode className="w-3.5 h-3.5" />
-                      <span>QR Code</span>
+                      <span>สร้าง QR</span>
                     </button>
 
-                    {/* Direct Download Button */}
+                    {/* Direct Download */}
                     <a
                       href={file.public_url}
                       download={file.filename}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-slate-300 hover:text-white border border-white/10 transition-colors"
-                      title="Direct Download"
+                      title="ดาวน์โหลดไฟล์ตรง"
                     >
                       <Download className="w-3.5 h-3.5" />
                     </a>
 
-                    {/* Copy Link Button */}
+                    {/* Copy Link */}
                     <button
                       onClick={() => handleCopyLink(file)}
                       className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-slate-300 hover:text-white border border-white/10 transition-colors"
-                      title="Copy Public Beam URL"
+                      title="คัดลอกลิงก์ส่งต่อ"
                     >
                       {isCopied ? (
                         <Check className="w-3.5 h-3.5 text-cyan-bright" />
@@ -215,12 +214,12 @@ export const FileList: React.FC<FileListProps> = ({ files, onSelectQrFile, onFil
                       )}
                     </button>
 
-                    {/* Delete Button */}
+                    {/* Delete */}
                     <button
                       onClick={() => handleDelete(file)}
                       disabled={isDeleting}
                       className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/10 hover:border-rose-500/30 transition-colors disabled:opacity-50"
-                      title="Purge artifact from orbit"
+                      title="ลบไฟล์นี้"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

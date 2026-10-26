@@ -6,13 +6,13 @@ import { useToast } from './ToastContext';
 import { copyToClipboard, playChime } from '@/lib/utils';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
-const DEFAULT_NOTE = `# 🛰️ Orbital Mission Scratchpad
-- [x] Ingest payload into Supabase bucket \`hub-files\`
-- [x] Broadcast live QR vector beam
-- [ ] Connect mobile terminal via holographic scan
-- [ ] Maintain zero-gravity deep work flow
+const DEFAULT_NOTE = `# 🛰️ สมุดบันทึกภารกิจ (Mission Scratchpad)
+- [x] อัปโหลดไฟล์เข้าสู่ Supabase Bucket \`hub-files\`
+- [x] สร้างรหัส QR Code แบบเวกเตอร์
+- [x] เชื่อมต่อห้องสนทนาเรียลไทม์ (Live Chat)
+- [ ] สแกนรับไฟล์ผ่านกล้องมือถือ
 
-*Tips: Changes are automatically preserved in local storage & synced to Supabase when linked.*
+*ข้อความจะถูกบันทึกในเครื่องอัตโนมัติ และซิงค์ขึ้น Supabase เมื่อเชื่อมต่อระบบคลาวด์*
 `;
 
 export const QuickScratchpad: React.FC = () => {
@@ -22,7 +22,6 @@ export const QuickScratchpad: React.FC = () => {
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit');
   const { showToast } = useToast();
 
-  // Load from LocalStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem('aetherhub_note');
@@ -33,11 +32,10 @@ export const QuickScratchpad: React.FC = () => {
         setSyncStatus('synced');
       }
     } catch {
-      // LocalStorage disabled or SSR
+      // Ignore
     }
   }, []);
 
-  // Save changes with debounce
   useEffect(() => {
     try {
       localStorage.setItem('aetherhub_note', content);
@@ -49,11 +47,10 @@ export const QuickScratchpad: React.FC = () => {
       setSyncStatus('saving');
       const timer = setTimeout(async () => {
         try {
-          // Attempt upserting default note in supabase
           await supabase.from('notes').upsert([
             {
               id: '00000000-0000-0000-0000-000000000001',
-              title: 'AetherHub Master Memo',
+              title: 'AetherHub บันทึกหลัก',
               content: content,
               updated_at: new Date().toISOString(),
             },
@@ -75,7 +72,7 @@ export const QuickScratchpad: React.FC = () => {
     if (ok) {
       setCopied(true);
       playChime('click');
-      showToast('Scratchpad text copied to clipboard', 'success');
+      showToast('คัดลอกข้อความในสมุดจดแล้ว', 'success');
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -85,11 +82,11 @@ export const QuickScratchpad: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `AetherHub-Scratchpad-${new Date().toISOString().slice(0, 10)}.md`;
+    link.download = `AetherHub-บันทึก-${new Date().toISOString().slice(0, 10)}.md`;
     link.click();
     URL.revokeObjectURL(url);
     playChime('complete');
-    showToast('Downloaded as Markdown (.md)', 'success');
+    showToast('ดาวน์โหลดเป็นไฟล์ Markdown (.md) แล้ว', 'success');
   };
 
   const wordCount = content.trim().length === 0 ? 0 : content.trim().split(/\s+/).length;
@@ -105,31 +102,31 @@ export const QuickScratchpad: React.FC = () => {
           </div>
           <div>
             <h4 className="text-base font-semibold text-white flex items-center space-x-1.5">
-              <span>Quick Scratchpad</span>
+              <span>สมุดจดด่วน (Quick Scratchpad)</span>
               <Sparkles className="w-3.5 h-3.5 text-violet-soft" />
             </h4>
             <div className="flex items-center space-x-2 text-[11px] text-slate-400">
               {syncStatus === 'synced' ? (
                 <span className="text-cyan-bright flex items-center space-x-1">
                   <Cloud className="w-3 h-3 text-cyan-neon" />
-                  <span>Synced to Supabase</span>
+                  <span>ซิงค์กับ Supabase แล้ว</span>
                 </span>
               ) : syncStatus === 'saving' ? (
                 <span className="text-amber-300 animate-pulse flex items-center space-x-1">
                   <Cloud className="w-3 h-3" />
-                  <span>Transmitting...</span>
+                  <span>กำลังส่งข้อมูล...</span>
                 </span>
               ) : (
                 <span className="text-slate-400 flex items-center space-x-1">
                   <Cloud className="w-3 h-3" />
-                  <span>Saved in Local Orbit</span>
+                  <span>บันทึกในเครื่อง</span>
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* View Switcher & Action buttons */}
+        {/* Action buttons */}
         <div className="flex items-center space-x-1.5">
           <button
             onClick={() => setViewMode(viewMode === 'edit' ? 'preview' : 'edit')}
@@ -138,7 +135,7 @@ export const QuickScratchpad: React.FC = () => {
                 ? 'bg-cyan-neon/20 border-cyan-neon/40 text-cyan-bright'
                 : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-white'
             }`}
-            title="Toggle Markdown / Preview"
+            title="สลับโหมด แก้ไข / ดูตัวอย่าง"
           >
             {viewMode === 'preview' ? <Code2 className="w-3.5 h-3.5" /> : <BookOpen className="w-3.5 h-3.5" />}
           </button>
@@ -146,7 +143,7 @@ export const QuickScratchpad: React.FC = () => {
           <button
             onClick={handleCopy}
             className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] text-slate-400 hover:text-white border border-white/10 transition-colors"
-            title="Copy Note"
+            title="คัดลอกข้อความ"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-cyan-bright" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
@@ -154,25 +151,25 @@ export const QuickScratchpad: React.FC = () => {
           <button
             onClick={handleDownloadMd}
             className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] text-slate-400 hover:text-white border border-white/10 transition-colors"
-            title="Download .md"
+            title="ดาวน์โหลดเป็น .md"
           >
             <Download className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Editor / Render Body */}
+      {/* Editor Body */}
       <div className="flex-1 min-h-[220px]">
         {viewMode === 'edit' ? (
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Type quick memos, code snippets, markdown lists, or payload instructions..."
+            placeholder="พิมพ์ข้อความด่วน โค้ด โน้ต หรือสิ่งที่ต้องทำ..."
             className="w-full h-56 p-3.5 rounded-2xl glass-input text-xs sm:text-sm font-mono leading-relaxed text-slate-200 placeholder-slate-500 focus:outline-none resize-none"
           />
         ) : (
           <div className="w-full h-56 p-3.5 rounded-2xl glass-panel bg-space-950/60 overflow-y-auto text-xs sm:text-sm text-slate-200 space-y-2 whitespace-pre-wrap font-sans">
-            {content || <span className="text-slate-500 italic">No notes written yet.</span>}
+            {content || <span className="text-slate-500 italic">ยังไม่มีข้อความบันทึก</span>}
           </div>
         )}
       </div>
@@ -180,22 +177,22 @@ export const QuickScratchpad: React.FC = () => {
       {/* Status Bar */}
       <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-slate-400">
         <div className="flex items-center space-x-3">
-          <span>{wordCount} words</span>
+          <span>{wordCount} คำ</span>
           <span>•</span>
-          <span>{charCount} chars</span>
+          <span>{charCount} ตัวอักษร</span>
         </div>
 
         <button
           onClick={() => {
-            if (confirm('Reset scratchpad to default?')) {
+            if (confirm('คุณต้องการรีเซ็ตสมุดจดเป็นค่าเริ่มต้นใช่หรือไม่?')) {
               setContent(DEFAULT_NOTE);
-              showToast('Scratchpad reset', 'info');
+              showToast('รีเซ็ตสมุดจดเรียบร้อย', 'info');
             }
           }}
           className="text-slate-400 hover:text-slate-200 flex items-center space-x-1"
         >
           <RotateCcw className="w-3 h-3" />
-          <span>Reset</span>
+          <span>รีเซ็ต</span>
         </button>
       </div>
     </div>

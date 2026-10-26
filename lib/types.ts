@@ -16,4 +16,12 @@ export interface HubNote {
   updated_at: string;
 }
 
-export type ActiveWidget = 'all' | 'files' | 'qr' | 'notes' | 'timer';
+export interface HubMessage {
+  id: string;
+  sender_name: string;
+  content: string;
+  avatar_color?: string;
+  created_at: string;
+}
+
+export type ActiveWidget = 'all' | 'files' | 'qr' | 'chat' | 'notes' | 'timer';

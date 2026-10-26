@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Smartphone, Copy, Check, Scan, Sparkles } from 'lucide-react';
+import { X, Smartphone, Copy, Check, Scan } from 'lucide-react';
 import { copyToClipboard, playChime } from '@/lib/utils';
 import { useToast } from './ToastContext';
 
@@ -22,7 +22,7 @@ export const CastModal: React.FC<CastModalProps> = ({
   qrValue,
   fgColor,
   bgColor,
-  title = 'Orbital Hologram Beam',
+  title = 'ฉายสัญญาณโฮโลแกรม (Hologram Beam)',
 }) => {
   const [copied, setCopied] = React.useState(false);
   const { showToast } = useToast();
@@ -42,7 +42,7 @@ export const CastModal: React.FC<CastModalProps> = ({
     if (ok) {
       setCopied(true);
       playChime('click');
-      showToast('Payload link copied to clipboard', 'success');
+      showToast('คัดลอกลิงก์สำเร็จแล้ว', 'success');
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -73,7 +73,7 @@ export const CastModal: React.FC<CastModalProps> = ({
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 transition-colors"
-            aria-label="Close Hologram"
+            aria-label="ปิดหน้าต่าง"
           >
             <X className="w-4 h-4" />
           </button>
@@ -81,7 +81,7 @@ export const CastModal: React.FC<CastModalProps> = ({
           {/* Hologram Header */}
           <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-cyan-neon/15 border border-cyan-neon/30 text-cyan-bright mb-3">
             <Scan className="w-3.5 h-3.5 animate-pulse" />
-            <span>Holographic Mobile Broadcast</span>
+            <span>โหมดสแกนผ่านกล้องโทรศัพท์มือถือ</span>
           </div>
 
           <h3 className="text-xl sm:text-2xl font-bold text-white mb-1">
@@ -89,25 +89,24 @@ export const CastModal: React.FC<CastModalProps> = ({
           </h3>
           <p className="text-xs text-slate-400 mb-6 flex items-center justify-center space-x-1">
             <Smartphone className="w-3.5 h-3.5 text-cyan-neon" />
-            <span>Aim your mobile camera or lens to capture immediately</span>
+            <span>เปิดกล้องมือถือส่องมาที่หน้าจอเพื่อรับข้อมูลได้ทันที</span>
           </p>
 
-          {/* Hologram QR Container with Scanning Line */}
+          {/* QR Container */}
           <div className="relative p-6 rounded-2xl bg-space-900/90 border-2 border-cyan-neon/40 shadow-[0_0_40px_rgba(6,182,212,0.35)] overflow-hidden">
-            {/* Hologram Corner Brackets */}
+            {/* Corner Brackets */}
             <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-cyan-neon pointer-events-none" />
             <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-cyan-neon pointer-events-none" />
             <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-neon pointer-events-none" />
             <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-neon pointer-events-none" />
 
-            {/* Holographic Laser Scan Line */}
+            {/* Laser Scan Line */}
             <motion.div
               animate={{ y: [0, 240, 0] }}
               transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
               className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-electric to-transparent opacity-75 shadow-[0_0_15px_rgba(0,240,255,1)] pointer-events-none z-20"
             />
 
-            {/* QR Render */}
             <div className="relative z-10 p-2 rounded-xl bg-white/5 backdrop-blur-sm">
               <QRCodeSVG
                 value={qrValue || 'https://aetherhub.vercel.app'}
@@ -120,7 +119,7 @@ export const CastModal: React.FC<CastModalProps> = ({
             </div>
           </div>
 
-          {/* Value Preview & Copy */}
+          {/* Preview & Copy */}
           <div className="mt-6 w-full flex items-center space-x-2 p-2 rounded-xl bg-space-950/70 border border-white/10 text-xs text-slate-300">
             <span className="truncate flex-1 font-mono text-left pl-2 text-cyan-bright">
               {qrValue}
@@ -130,7 +129,7 @@ export const CastModal: React.FC<CastModalProps> = ({
               className="px-3 py-1.5 rounded-lg bg-cyan-neon/20 hover:bg-cyan-neon/30 text-cyan-bright border border-cyan-neon/40 font-medium transition-colors flex items-center space-x-1"
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
+              <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
             </button>
           </div>
         </motion.div>

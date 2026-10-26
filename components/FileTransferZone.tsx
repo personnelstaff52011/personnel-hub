@@ -2,10 +2,10 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, Orbit, Sparkles, FileText, CheckCircle2, AlertCircle, ArrowUpCircle } from 'lucide-react';
+import { UploadCloud, Orbit, Sparkles, ArrowUpCircle } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { HubFile } from '@/lib/types';
-import { formatFileSize, playChime } from '@/lib/utils';
+import { playChime } from '@/lib/utils';
 import { useToast } from './ToastContext';
 
 interface FileTransferZoneProps {
@@ -38,7 +38,6 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
     setActiveFileName(file.name);
 
     try {
-      // Simulate rapid progress ticks for delightful UX
       const progressTimer = setInterval(() => {
         setUploadProgress((prev) => {
           if (prev >= 85) {
@@ -50,12 +49,11 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
       }, 100);
 
       const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'hub-files';
-      const fileExt = file.name.split('.').pop() || 'bin';
       const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const uniqueFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}_${cleanName}`;
 
       let publicUrl = '';
-      let storagePath = uniqueFileName;
+      const storagePath = uniqueFileName;
 
       if (isSupabaseConfigured) {
         // Direct upload to Supabase Storage
@@ -68,8 +66,7 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
 
         if (uploadError) {
           console.warn('Storage upload error, attempting fallback URL:', uploadError);
-          // If bucket isn't created yet, warn user
-          showToast(`Storage Notice: ${uploadError.message}. Check if bucket 'hub-files' is created.`, 'error');
+          showToast(`ข้อผิดพลาด Storage: ${uploadError.message}`, 'error');
           publicUrl = URL.createObjectURL(file);
         } else {
           const { data: urlData } = supabase.storage
@@ -98,10 +95,9 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
 
         if (!dbError && record) {
           playChime('upload');
-          showToast(`"${file.name}" ingested to Singularity Core`, 'success');
+          showToast(`ดึงไฟล์ "${file.name}" เข้าสู่วงโคจรสำเร็จ!`, 'success');
           onFileUploaded(record as HubFile);
         } else {
-          // If table insert had an issue, fallback to synthetic hub item
           const fallbackFile: HubFile = {
             id: crypto.randomUUID(),
             filename: file.name,
@@ -112,11 +108,10 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
             created_at: new Date().toISOString(),
           };
           playChime('upload');
-          showToast(`"${file.name}" uploaded to storage`, 'success');
+          showToast(`อัปโหลด "${file.name}" สู่ Storage เรียบร้อย`, 'success');
           onFileUploaded(fallbackFile);
         }
       } else {
-        // Safe offline / demo mode: create accessible blob URL
         clearInterval(progressTimer);
         setUploadProgress(100);
         publicUrl = URL.createObjectURL(file);
@@ -132,12 +127,12 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
         };
 
         playChime('upload');
-        showToast(`Ingested in Demo Hub: "${file.name}"`, 'info');
+        showToast(`บันทึกในโหมดจำลอง: "${file.name}"`, 'info');
         onFileUploaded(localFile);
       }
     } catch (err: unknown) {
       console.error('Upload exception:', err);
-      showToast(err instanceof Error ? err.message : 'Upload failed', 'error');
+      showToast(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการอัปโหลด', 'error');
     } finally {
       setTimeout(() => {
         setUploading(false);
@@ -168,7 +163,7 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
 
   return (
     <div className="relative group">
-      {/* Ambient Singularity Halo */}
+      {/* Ambient Halo */}
       <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-violet-glow/20 via-cyan-neon/30 to-violet-glow/20 blur-xl opacity-60 group-hover:opacity-100 transition duration-1000 group-hover:duration-300" />
 
       <div
@@ -190,9 +185,8 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
           disabled={uploading}
         />
 
-        {/* Singularity Core Holographic Rings */}
+        {/* Singularity Core Rings */}
         <div className="relative mb-6 flex items-center justify-center">
-          {/* Outer Pulsing Aura */}
           <motion.div
             animate={{
               scale: isDragging ? [1, 1.25, 1.1] : [1, 1.1, 1],
@@ -202,21 +196,18 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
             className="absolute w-36 h-36 rounded-full bg-gradient-to-tr from-violet-glow/30 via-cyan-neon/20 to-transparent blur-md pointer-events-none"
           />
 
-          {/* Rotating Orbital Track */}
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
             className="absolute w-28 h-28 rounded-full border border-dashed border-cyan-neon/40 pointer-events-none"
           />
 
-          {/* Counter-rotating Inner Ring */}
           <motion.div
             animate={{ rotate: -360 }}
             transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
             className="absolute w-20 h-20 rounded-full border border-violet-glow/40 pointer-events-none"
           />
 
-          {/* Center Singularity Core Icon */}
           <div className="relative z-10 w-16 h-16 rounded-2xl bg-space-850/90 border border-white/15 flex items-center justify-center shadow-[0_0_25px_rgba(139,92,246,0.35)] group-hover:shadow-[0_0_35px_rgba(6,182,212,0.5)] transition-all duration-300">
             {uploading ? (
               <ArrowUpCircle className="w-8 h-8 text-cyan-bright animate-bounce" />
@@ -228,29 +219,29 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
           </div>
         </div>
 
-        {/* Gravitational Core Typography */}
+        {/* Thai Typography */}
         <div className="text-center z-10 max-w-md">
           <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/[0.04] border border-white/10 text-cyan-bright mb-3">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Gravitational Singularity Core</span>
+            <span>แกนดึงดูดสสาร (Gravitational Core)</span>
           </div>
 
           <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white mb-2">
             {uploading ? (
-              <span className="text-glow-cyan text-cyan-bright">Ingesting Matter into Orbit...</span>
+              <span className="text-glow-cyan text-cyan-bright">กำลังดึงข้อมูลเข้าสู่วงโคจร...</span>
             ) : isDragging ? (
-              <span className="text-cyan-neon">Release to Pull into Orbit</span>
+              <span className="text-cyan-neon">ปล่อยไฟล์เพื่อส่งเข้าสู่ระบบ</span>
             ) : (
-              <>Drag & Drop or <span className="text-cyan-bright hover:underline">Browse Files</span></>
+              <>ลากและวางไฟล์ที่นี่ หรือ <span className="text-cyan-bright hover:underline">คลิกเพื่อเลือกไฟล์</span></>
             )}
           </h3>
 
           <p className="text-xs sm:text-sm text-slate-400">
-            Real-time multi-format ingestion directly into Supabase Storage (<code className="text-slate-300 bg-space-800 px-1 py-0.5 rounded">hub-files</code>) with instant QR beam generation.
+            อัปโหลดขึ้น Supabase Storage อัตโนมัติ พร้อมสร้างรหัสคิวอาร์ (QR Beam) ให้สแกนรับไฟล์ได้ทันที
           </p>
         </div>
 
-        {/* Live Upload Progress Indicator */}
+        {/* Upload Progress Bar */}
         <AnimatePresence>
           {uploading && (
             <motion.div
@@ -275,13 +266,13 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
           )}
         </AnimatePresence>
 
-        {/* Quick Specs Footnote */}
+        {/* Footnote */}
         <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-center space-x-4 text-[11px] text-slate-400">
-          <span>Max file size: 50MB</span>
+          <span>ขนาดสูงสุด: 50MB</span>
           <span>•</span>
-          <span>Zero-loss compression</span>
+          <span>บีบอัดข้อมูลแบบไร้การสูญเสีย</span>
           <span>•</span>
-          <span>Auto-expiring cache</span>
+          <span>พร้อมสร้าง QR Code สแกน</span>
         </div>
       </div>
     </div>

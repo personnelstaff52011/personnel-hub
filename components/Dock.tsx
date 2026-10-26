@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { LayoutGrid, UploadCloud, QrCode, FileEdit, Clock } from 'lucide-react';
+import { LayoutGrid, UploadCloud, QrCode, MessageSquare, FileEdit, Clock } from 'lucide-react';
 import { ActiveWidget } from '@/lib/types';
 import { playChime } from '@/lib/utils';
 
@@ -14,11 +14,12 @@ interface DockProps {
 
 export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, fileCount }) => {
   const tabs = [
-    { id: 'all' as ActiveWidget, label: 'All-in-One', icon: LayoutGrid },
-    { id: 'files' as ActiveWidget, label: 'Singularity Ingest', icon: UploadCloud, badge: fileCount > 0 ? fileCount : undefined },
-    { id: 'qr' as ActiveWidget, label: 'QR Studio', icon: QrCode },
-    { id: 'notes' as ActiveWidget, label: 'Scratchpad', icon: FileEdit },
-    { id: 'timer' as ActiveWidget, label: 'Focus Core', icon: Clock },
+    { id: 'all' as ActiveWidget, label: 'ทั้งหมด', icon: LayoutGrid },
+    { id: 'files' as ActiveWidget, label: 'ส่งต่อไฟล์', icon: UploadCloud, badge: fileCount > 0 ? fileCount : undefined },
+    { id: 'qr' as ActiveWidget, label: 'คิวอาร์โค้ด', icon: QrCode },
+    { id: 'chat' as ActiveWidget, label: 'แชตสด', icon: MessageSquare },
+    { id: 'notes' as ActiveWidget, label: 'สมุดจดด่วน', icon: FileEdit },
+    { id: 'timer' as ActiveWidget, label: 'จับเวลาโฟกัส', icon: Clock },
   ];
 
   return (
@@ -27,7 +28,7 @@ export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, fileCount }
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="flex items-center space-x-1.5 p-1.5 rounded-2xl glass-panel-glow border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
+        className="flex items-center space-x-1 p-1.5 rounded-2xl glass-panel-glow border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -40,7 +41,7 @@ export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, fileCount }
                 playChime('click');
                 setActiveTab(tab.id);
               }}
-              className={`relative flex items-center space-x-2 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-medium transition-all duration-200 select-none ${
+              className={`relative flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 select-none ${
                 isActive
                   ? 'text-white'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
@@ -63,7 +64,7 @@ export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, fileCount }
               <span className="relative z-10 hidden sm:inline">{tab.label}</span>
 
               {tab.badge !== undefined && (
-                <span className="relative z-10 ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-cyan-neon/20 text-cyan-bright border border-cyan-neon/30">
+                <span className="relative z-10 ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-cyan-neon/20 text-cyan-bright border border-cyan-neon/30">
                   {tab.badge}
                 </span>
               )}
