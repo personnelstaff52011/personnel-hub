@@ -106,18 +106,6 @@ export const FileTransferZone: React.FC<FileTransferZoneProps> = ({ onFileUpload
         playChime('upload');
         showToast(`ดึงไฟล์ "${file.name}" เข้าสู่วงโคจรสำเร็จ!`, 'success');
         onFileUploaded(savedFile);
-
-        // Broadcast to other users in real-time
-        try {
-          const channel = supabase.channel('aetherhub-realtime');
-          channel.send({
-            type: 'broadcast',
-            event: 'new_file',
-            payload: savedFile,
-          });
-        } catch (bErr) {
-          console.warn('Broadcast file error:', bErr);
-        }
       } else {
         clearInterval(progressTimer);
         setUploadProgress(100);

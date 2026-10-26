@@ -95,46 +95,56 @@ export const LiveChat: React.FC = () => {
     // 2. Fetch initial messages
     fetchLatestMessages();
 
+    if (!isSupabaseConfigured) {
+      return;
+    }
+
     // 3. Supabase Realtime Channel: Listen to both Broadcast & Postgres Changes
-    const channel = supabase.channel('aetherhub-realtime', {
+    const channel = supabase.channel('hub-chat-sync', {
       config: { broadcast: { self: false } },
     });
 
-    channel
-      // A: Listen to broadcast messages from other clients (Instant 0ms latency)
-      .on('broadcast', { event: 'new_message' }, (payload) => {
-        const incoming = payload.payload as HubMessage;
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === incoming.id)) return prev;
-          playChime('click');
-          return [...prev, incoming];
-        });
-      })
-      // B: Listen to PostgreSQL table changes
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const incoming = payload.new as HubMessage;
+    try {
+      channel
+        // A: Listen to broadcast messages from other clients (Instant 0ms latency)
+        .on('broadcast', { event: 'new_message' }, (payload) => {
+          const incoming = payload.payload as HubMessage;
+          if (!incoming || !incoming.id) return;
           setMessages((prev) => {
             if (prev.some((m) => m.id === incoming.id)) return prev;
             playChime('click');
             return [...prev, incoming];
           });
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Realtime chat channel connected');
-        }
-      });
+        })
+        // B: Listen to PostgreSQL table changes
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          (payload) => {
+            const incoming = payload.new as HubMessage;
+            if (!incoming || !incoming.id) return;
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === incoming.id)) return prev;
+              playChime('click');
+              return [...prev, incoming];
+            });
+          }
+        )
+        .subscribe();
+    } catch (cErr) {
+      console.warn('Realtime chat subscription error:', cErr);
+    }
 
     // 4. Polling Fallback: Refresh messages every 3 seconds
     const interval = setInterval(fetchLatestMessages, 3000);
 
     return () => {
       clearInterval(interval);
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch {
+        // Ignore
+      }
     };
   }, [fetchLatestMessages]);
 
@@ -175,16 +185,18 @@ export const LiveChat: React.FC = () => {
     setMessages((prev) => [...prev, newMsg]);
     playChime('upload');
 
-    // 2. Broadcast immediately over WebSocket to all other users
-    try {
-      const channel = supabase.channel('aetherhub-realtime');
-      channel.send({
-        type: 'broadcast',
-        event: 'new_message',
-        payload: newMsg,
-      });
-    } catch (bErr) {
-      console.warn('Broadcast chat error:', bErr);
+    // 2. Broadcast over WebSocket to all other users
+    if (isSupabaseConfigured) {
+      try {
+        const channel = supabase.channel('hub-chat-sync');
+        channel.send({
+          type: 'broadcast',
+          event: 'new_message',
+          payload: newMsg,
+        });
+      } catch (bErr) {
+        console.warn('Broadcast chat error:', bErr);
+      }
     }
 
     // 3. Persist to Supabase Database

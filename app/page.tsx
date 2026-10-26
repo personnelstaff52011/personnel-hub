@@ -75,58 +75,72 @@ function AetherHubContent() {
     // 1. Initial Load
     fetchFiles();
 
+    if (!isSupabaseConfigured) {
+      return;
+    }
+
     // 2. Real-time Channel for Files: Broadcast & Postgres Changes
-    const channel = supabase.channel('aetherhub-realtime', {
+    const channel = supabase.channel('hub-files-sync', {
       config: { broadcast: { self: false } },
     });
 
-    channel
-      // A: Listen to broadcast from other clients (Instant 0ms latency)
-      .on('broadcast', { event: 'new_file' }, (payload) => {
-        const incoming = payload.payload as HubFile;
-        setFiles((prev) => {
-          if (prev.some((f) => f.id === incoming.id)) return prev;
-          playChime('upload');
-          showToast(`มีไฟล์ใหม่ในวงโคจร: "${incoming.filename}"`, 'info');
-          return [incoming, ...prev];
-        });
-      })
-      .on('broadcast', { event: 'delete_file' }, (payload) => {
-        const deletedId = (payload.payload as { id: string })?.id;
-        if (deletedId) {
-          setFiles((prev) => prev.filter((f) => f.id !== deletedId));
-        }
-      })
-      // B: Listen to PostgreSQL changes on `files` table
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'files' },
-        (payload) => {
-          const incoming = payload.new as HubFile;
+    try {
+      channel
+        // A: Listen to broadcast from other clients (Instant 0ms latency)
+        .on('broadcast', { event: 'new_file' }, (payload) => {
+          const incoming = payload.payload as HubFile;
+          if (!incoming || !incoming.id) return;
           setFiles((prev) => {
             if (prev.some((f) => f.id === incoming.id)) return prev;
+            playChime('upload');
+            showToast(`มีไฟล์ใหม่ในวงโคจร: "${incoming.filename}"`, 'info');
             return [incoming, ...prev];
           });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'files' },
-        (payload) => {
-          const deletedId = (payload.old as { id: string })?.id;
+        })
+        .on('broadcast', { event: 'delete_file' }, (payload) => {
+          const deletedId = (payload.payload as { id: string })?.id;
           if (deletedId) {
             setFiles((prev) => prev.filter((f) => f.id !== deletedId));
           }
-        }
-      )
-      .subscribe();
+        })
+        // B: Listen to PostgreSQL changes on `files` table
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'files' },
+          (payload) => {
+            const incoming = payload.new as HubFile;
+            if (!incoming || !incoming.id) return;
+            setFiles((prev) => {
+              if (prev.some((f) => f.id === incoming.id)) return prev;
+              return [incoming, ...prev];
+            });
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'files' },
+          (payload) => {
+            const deletedId = (payload.old as { id: string })?.id;
+            if (deletedId) {
+              setFiles((prev) => prev.filter((f) => f.id !== deletedId));
+            }
+          }
+        )
+        .subscribe();
+    } catch (cErr) {
+      console.warn('Realtime subscription error:', cErr);
+    }
 
     // 3. Polling Fallback: Refresh files every 4 seconds
     const interval = setInterval(fetchFiles, 4000);
 
     return () => {
       clearInterval(interval);
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch {
+        // Ignore
+      }
     };
   }, [fetchFiles, showToast]);
 
@@ -140,15 +154,17 @@ function AetherHubContent() {
     setQrTargetValue(newFile.public_url);
 
     // Broadcast file to other users
-    try {
-      const channel = supabase.channel('aetherhub-realtime');
-      channel.send({
-        type: 'broadcast',
-        event: 'new_file',
-        payload: newFile,
-      });
-    } catch {
-      // Ignore
+    if (isSupabaseConfigured) {
+      try {
+        const channel = supabase.channel('hub-files-sync');
+        channel.send({
+          type: 'broadcast',
+          event: 'new_file',
+          payload: newFile,
+        });
+      } catch {
+        // Ignore
+      }
     }
   };
 
@@ -156,15 +172,17 @@ function AetherHubContent() {
     setFiles((prev) => prev.filter((f) => f.id !== id));
 
     // Broadcast delete to other users
-    try {
-      const channel = supabase.channel('aetherhub-realtime');
-      channel.send({
-        type: 'broadcast',
-        event: 'delete_file',
-        payload: { id },
-      });
-    } catch {
-      // Ignore
+    if (isSupabaseConfigured) {
+      try {
+        const channel = supabase.channel('hub-files-sync');
+        channel.send({
+          type: 'broadcast',
+          event: 'delete_file',
+          payload: { id },
+        });
+      } catch {
+        // Ignore
+      }
     }
   };
 

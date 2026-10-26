@@ -1,15 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Polyfill WebSocket for Node.js environments below v22
-if (typeof window === 'undefined' && typeof globalThis.WebSocket === 'undefined') {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    globalThis.WebSocket = require('ws');
-  } catch {
-    // Browser or edge fallback
-  }
-}
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
