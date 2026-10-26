@@ -86,13 +86,13 @@ export const QrStudio: React.FC<QrStudioProps> = ({ initialValue = 'https://aeth
         ctx.drawImage(img, padding, padding, dimension - padding * 2, dimension - padding * 2);
 
         ctx.fillStyle = '#64748b';
-        ctx.font = '28px monospace';
+        ctx.font = '28px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('สร้างโดย AetherHub (Anti-Gravity QR)', dimension / 2, dimension - 30);
+        ctx.fillText('ครอบครัว กำลังพล กองพลทหารช่าง', dimension / 2, dimension - 30);
 
         const pngFile = canvas.toDataURL('image/png');
         const downloadLink = document.createElement('a');
-        downloadLink.download = `AetherHub-QR-${Date.now()}.png`;
+        downloadLink.download = `EngineerCorps-QR-${Date.now()}.png`;
         downloadLink.href = pngFile;
         downloadLink.click();
 

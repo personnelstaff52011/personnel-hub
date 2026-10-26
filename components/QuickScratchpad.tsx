@@ -50,7 +50,7 @@ export const QuickScratchpad: React.FC = () => {
           await supabase.from('notes').upsert([
             {
               id: '00000000-0000-0000-0000-000000000001',
-              title: 'AetherHub บันทึกหลัก',
+              title: 'บันทึกกำลังพล กองพลทหารช่าง',
               content: content,
               updated_at: new Date().toISOString(),
             },
@@ -82,7 +82,7 @@ export const QuickScratchpad: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `AetherHub-บันทึก-${new Date().toISOString().slice(0, 10)}.md`;
+    link.download = `บันทึกข้อความ-กองพลทหารช่าง-${new Date().toISOString().slice(0, 10)}.md`;
     link.click();
     URL.revokeObjectURL(url);
     playChime('complete');

@@ -2,9 +2,12 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'AetherHub - Anti-Gravity Collaborative Workspace',
-  description: 'Zero-gravity file ingestion, real-time QR generation, and ambient productivity micro-tools integrated with Supabase.',
-  keywords: ['file sharing', 'qr code generator', 'anti-gravity', 'supabase', 'nextjs', 'productivity'],
+  title: 'ครอบครัว กำลังพล กองพลทหารช่าง',
+  description: 'ระบบสารสนเทศ บริการไฟล์ QR Code และการประสานงาน ครอบครัว กำลังพล กองพลทหารช่าง',
+  keywords: ['กองพลทหารช่าง', 'ครอบครัว กำลังพล กองพลทหารช่าง', 'ทหารช่าง', 'ระบบกำลังพล', 'qr code'],
+  icons: {
+    icon: '/logo.png',
+  },
 };
 
 export default function RootLayout({
