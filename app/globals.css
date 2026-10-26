@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #070913;
+  --foreground: #f1f5f9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  color: var(--foreground);
+  background-color: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+  selection-background-color: #8B5CF6;
+  selection-color: #ffffff;
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.4);
+  color: #ffffff;
+}
+
+/* Custom Scrollbar for Anti-Gravity Aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(7, 9, 19, 0.7);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.6);
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(11, 15, 25, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-panel-glow {
+  background: rgba(11, 15, 25, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 35px -5px rgba(139, 92, 246, 0.18), 0 0 15px -3px rgba(6, 182, 212, 0.15);
+}
+
+.glass-input {
+  background: rgba(16, 22, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: rgba(6, 182, 212, 0.6);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
+}
+
+/* Neon Text Glow */
+.text-glow-cyan {
+  text-shadow: 0 0 12px rgba(6, 182, 212, 0.6), 0 0 24px rgba(6, 182, 212, 0.3);
+}
+
+.text-glow-violet {
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.6), 0 0 24px rgba(139, 92, 246, 0.3);
+}
+
+/* Subtle Star Particle Twinkle */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 0.9; transform: scale(1.2); }
+}
+
+.particle-star {
+  position: absolute;
+  border-radius: 9999px;
+  background-color: #ffffff;
+  pointer-events: none;
+  animation: twinkle var(--duration, 4s) ease-in-out infinite var(--delay, 0s);
+}
