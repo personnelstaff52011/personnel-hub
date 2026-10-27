@@ -18,9 +18,9 @@ import { useToast } from './ToastContext';
 const DEFAULT_MESSAGES: HubMessage[] = [
   {
     id: 'msg-1',
-    sender_name: 'ศูนย์ควบคุม Aether',
-    content: 'ยินดีต้อนรับสู่ห้องสื่อสารควอนตัมประจำสถานี AetherHub 🛰️ สัญญาณไร้แรงโน้มถ่วงพร้อมใช้งาน',
-    avatar_color: '#06B6D4',
+    sender_name: 'ศูนย์ประสานงาน กองพลทหารช่าง',
+    content: 'ยินดีต้อนรับสู่ระบบสื่อสาร ครอบครัว กำลังพล กองพลทหารช่าง 🛡️ พร้อมให้บริการกำลังพลทุกนาย',
+    avatar_color: '#F59E0B',
     created_at: new Date(Date.now() - 3600000).toISOString(),
   },
 ];

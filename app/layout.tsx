@@ -6,7 +6,12 @@ export const metadata: Metadata = {
   description: 'ระบบสารสนเทศ บริการไฟล์ QR Code และการประสานงาน ครอบครัว กำลังพล กองพลทหารช่าง',
   keywords: ['กองพลทหารช่าง', 'ครอบครัว กำลังพล กองพลทหารช่าง', 'ทหารช่าง', 'ระบบกำลังพล', 'qr code'],
   icons: {
-    icon: '/logo.png',
+    icon: [
+      { url: '/icon.png' },
+      { url: '/logo.png' },
+    ],
+    shortcut: '/icon.png',
+    apple: '/apple-icon.png',
   },
 };
 

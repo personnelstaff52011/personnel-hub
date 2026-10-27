@@ -26,7 +26,7 @@ import { playChime } from '@/lib/utils';
 const DEMO_FILES: HubFile[] = [
   {
     id: 'demo-1',
-    filename: 'คู่มือภารกิจ-AetherHub.pdf',
+    filename: 'คู่มือกำลังพล-กองพลทหารช่าง.pdf',
     file_size: 2450000,
     mime_type: 'application/pdf',
     public_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
@@ -204,31 +204,32 @@ function AetherHubContent() {
 
       {/* Header */}
       <header className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3.5">
           <motion.div
             animate={{
-              y: [0, -5, 0],
-              rotate: [0, 2, -2, 0],
+              y: [0, -3, 0],
             }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-violet-glow via-cyan-neon to-cyan-bright p-[1.5px] shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-1 bg-gradient-to-tr from-amber-500/40 via-yellow-400/30 to-amber-600/40 shadow-[0_0_25px_rgba(245,158,11,0.3)] border border-amber-400/40 flex items-center justify-center bg-space-950/80 backdrop-blur-md"
           >
-            <div className="w-full h-full rounded-[14px] bg-space-950 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-cyan-bright" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="ตราสัญลักษณ์ กองพลทหารช่าง"
+              className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+            />
           </motion.div>
 
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-bright bg-clip-text text-transparent">
-                AetherHub
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-amber-100 via-white to-amber-300 bg-clip-text text-transparent">
+                ครอบครัว กำลังพล กองพลทหารช่าง
               </h1>
-              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-glow/20 text-violet-soft border border-violet-glow/30">
-                เรียลไทม์ควอนตัม
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                ระบบสารสนเทศ
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 hidden sm:block">
-              ศูนย์ปฏิบัติการส่งต่อไฟล์ รหัสคิวอาร์ และระบบสื่อสารเรียลไทม์
+            <p className="text-[11px] text-slate-300 hidden sm:block">
+              ศูนย์บริการไฟล์ ส่งต่อรหัสคิวอาร์ และระบบสื่อสารกำลังพล กองพลทหารช่าง
             </p>
           </div>
         </div>

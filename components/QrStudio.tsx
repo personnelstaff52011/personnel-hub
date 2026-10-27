@@ -104,11 +104,11 @@ export const QrStudio: React.FC<QrStudioProps> = ({ initialValue = 'https://aeth
         ctx.fillStyle = bgColor === '#FFFFFF' ? '#64748b' : '#94a3b8';
         ctx.font = '24px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('AetherHub - Scan to Download', dimension / 2, dimension - 24);
+        ctx.fillText('ครอบครัว กำลังพล กองพลทหารช่าง', dimension / 2, dimension - 24);
 
         const pngFile = canvas.toDataURL('image/png');
         const downloadLink = document.createElement('a');
-        downloadLink.download = `AetherHub-QR-${Date.now()}.png`;
+        downloadLink.download = `EngineerCorps-QR-${Date.now()}.png`;
         downloadLink.href = pngFile;
         downloadLink.click();
 
